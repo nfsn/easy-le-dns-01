@@ -12,13 +12,21 @@ use Pdp\Domain;
 use Pdp\Rules;
 
 
-final class PslTools {
+final class PslHelper {
 
 
-    public const string PSL_URL = 'https://publicsuffix.org/list/public_suffix_list.dat';
-
+    public const string PSL_URL        = 'https://publicsuffix.org/list/public_suffix_list.dat';
 
     public const string PSL_CACHE_FILE = __DIR__ . '/../data/public_suffix_list.dat';
+
+    private static Rules $psl;
+
+
+    public static function clearCacheFile() : void {
+        if ( file_exists( self::PSL_CACHE_FILE ) ) {
+            unlink( self::PSL_CACHE_FILE );
+        }
+    }
 
 
     public static function getPSLData() : string {
@@ -32,7 +40,10 @@ final class PslTools {
 
 
     public static function getRules() : Rules {
-        return Rules::fromString( self::getPSLData() );
+        if ( ! isset( self::$psl ) ) {
+            self::$psl = Rules::fromString( self::getPSLData() );
+        }
+        return self::$psl;
     }
 
 
