@@ -1,0 +1,31 @@
+{
+  "name": "nfsn/easy-le-dns-01",
+  "description": "Let's Encrypt + NearlyFreeSpeech.NET API = easy TLS for intranet devices.",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "NFSN\\DNS01\\": "src/"
+    }
+  },
+  "require": {
+    "php": "^8.3",
+    "jdwx/app": "^1.1",
+    "jdwx/strict": "^1.0.22",
+    "ext-openssl": "*",
+    "jdwx/acme": "dev-main",
+    "jdwx/dns-query": "^v2.0.4",
+    "nfsn/apiclient": "dev-main",
+    "jeremykendall/php-domain-parser": "^6.0"
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-latest",
+    "phan/phan": "^v5",
+    "phpstan/phpstan": "^2.0",
+    "phpunit/phpunit": "^12.3"
+  },
+  "scripts": {
+    "phan": "PHAN_ALLOW_XDEBUG=1 php -d xdebug.mode=off vendor/bin/phan -S --analyze-twice",
+    "phpstan": "phpstan",
+    "test": "vendor/bin/phpunit tests"
+  }
+}
