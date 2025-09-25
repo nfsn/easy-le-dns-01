@@ -65,7 +65,8 @@ readonly class Target implements \Stringable {
             "Domain: {$this->domain()}\n" .
             "Name: {$this->name()}\n" .
             "ACME Name: {$this->acmeName()}\n" .
-            "ACME FQDN: {$this->acmeFQDN()}\n";
+            "ACME FQDN: {$this->acmeFQDN()}\n" .
+            "Auth FQDN: {$this->authFQDN()}\n";
     }
 
 
@@ -82,6 +83,17 @@ readonly class Target implements \Stringable {
             return '_acme-challenge.' . substr( $this->stName, 2 );
         }
         return '_acme-challenge' . ( empty( $this->stName ) ? '' : '.' . $this->stName );
+    }
+
+
+    public function authFQDN() : string {
+        if ( $this->stName === '' || $this->stName === '*' ) {
+            return $this->stDomain;
+        }
+        if ( str_starts_with( $this->stName, '*.' ) ) {
+            return substr( $this->stName, 2 ) . '.' . $this->stDomain;
+        }
+        return $this->stName . '.' . $this->stDomain;
     }
 
 

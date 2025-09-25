@@ -21,6 +21,19 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
     private Manager $api;
 
 
+    /** @var list<string> */
+    private array $rNameServers = [
+        'ns.phx1.nearlyfreespeech.net',
+        'ns.phx2.nearlyfreespeech.net',
+        'ns.phx3.nearlyfreespeech.net',
+        'ns.phx4.nearlyfreespeech.net',
+        'ns.phx5.nearlyfreespeech.net',
+        'ns.phx6.nearlyfreespeech.net',
+        'ns.phx7.nearlyfreespeech.net',
+        'ns.phx8.nearlyfreespeech.net',
+    ];
+
+
     public function __construct( #[\SensitiveParameter] string $i_stMemberLogin,
                                  #[\SensitiveParameter] string $i_stApiKey ) {
         $this->api = new Manager( $i_stMemberLogin, $i_stApiKey );
@@ -90,25 +103,31 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
 
 
     private function recordVerify( string $i_stFQDN, string $i_stExpectedValue ) : bool {
-        $res = new Resolver( [
-            gethostbyname( 'ns.phx1.nearlyfreespeech.net' ),
-            gethostbyname( 'ns.phx2.nearlyfreespeech.net' ),
-        ] );
-        $res->recurse = false;
-        echo 'Waiting up to 60 seconds for DNS to propagate...';
-        for ( $ii = 0 ; $ii < 60 ; $ii++ ) {
-            $v = $res->query( $i_stFQDN, 'TXT' );
-            $rr = $v->answer[ 0 ] ?? null;
-            if ( $rr instanceof TXT && ( $rr->text[ 0 ] ?? 'Nope' ) === $i_stExpectedValue ) {
-                echo "OK!\n";
-                return true;
+        echo 'Waiting for DNS to propagate...';
+        foreach ( $this->rNameServers as $stNS ) {
+            $ip = gethostbyname( $stNS );
+            $res = new Resolver( [ $ip ] );
+            $res->recurse = false;
+            for ( $ii = 0 ; $ii < 60 ; $ii++ ) {
+                try {
+                    $v = $res->query( $i_stFQDN, 'TXT' );
+                } catch ( \Exception ) {
+                    $v = null;
+                }
+                $rr = $v->answer[ 0 ] ?? null;
+                if ( $rr instanceof TXT && ( $rr->text[ 0 ] ?? 'Nope' ) === $i_stExpectedValue ) {
+                    echo '👍';
+                    continue 2;
+                }
+                echo '.';
+                sleep( 1 );
             }
-            echo '.';
-            sleep( 1 );
+            echo "\n";
+            echo "Timed out waiting for DNS to propagate.\n";
+            return false;
         }
-        echo "\n";
-        echo "Timed out waiting for DNS to propagate.\n";
-        return false;
+        echo "OK!\n";
+        return true;
     }
 
 
