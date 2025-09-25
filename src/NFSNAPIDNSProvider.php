@@ -9,11 +9,15 @@ namespace NFSN\DNS01;
 
 use JDWX\DNSQuery\Resolver;
 use JDWX\DNSQuery\RR\TXT;
+use JDWX\Result\Result;
 use NFSN\APIClient\DNS;
 use NFSN\APIClient\Manager;
 
 
 class NFSNAPIDNSProvider implements DNSProviderInterface {
+
+
+    use OutputTrait;
 
 
     private const int DESIRED_TTL = 180;
@@ -35,17 +39,39 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
 
 
     public function __construct( #[\SensitiveParameter] string $i_stMemberLogin,
-                                 #[\SensitiveParameter] string $i_stApiKey ) {
+                                 #[\SensitiveParameter] string $i_stApiKey,
+                                 bool                          $i_bVerbose ) {
+        $this->bVerbose = $i_bVerbose;
         $this->api = new Manager( $i_stMemberLogin, $i_stApiKey );
     }
 
 
-    public function setAuthKey( Target $i_target, string $i_stAuthKey ) : bool {
+    /** @return Result<null> */
+    public function removeAuthKey( Target $i_target ) : Result {
+        try {
+            $dns = $this->api->newDNS( $i_target->domain() );
+            $rRecords = $dns->listRRs( $i_target->acmeName(), 'TXT' );
+            if ( ! is_array( $rRecords ) ) {
+                return Result::err( 'Could not find TXT record to remove.' );
+            }
+            foreach ( $rRecords as $rr ) {
+                $dns->removeRR( $i_target->acmeName(), 'TXT', $rr[ 'data' ] );
+            }
+            return Result::ok();
+        } catch ( \Exception $ex ) {
+            return Result::err( "Failed to remove DNS TXT record for {$i_target->acmeName()} on {$i_target->domain()}: {$ex}" );
+        }
+    }
+
+
+    /** @return Result<null> */
+    public function setAuthKey( Target $i_target, string $i_stAuthKey ) : Result {
         $dns = $this->api->newDNS( $i_target->domain() );
         try {
             if ( ! $this->recordExists( $dns, $i_target->acmeName(), $i_stAuthKey ) ) {
-                if ( ! $this->recordReplace( $dns, $i_target->acmeName(), $i_stAuthKey ) ) {
-                    return false;
+                $res = $this->recordReplace( $dns, $i_target->acmeName(), $i_stAuthKey );
+                if ( $res->isError() ) {
+                    return $res;
                 }
             }
 
@@ -53,14 +79,16 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
             return $this->recordVerify( $i_target->acmeFQDN(), $i_stAuthKey );
 
         } catch ( \Exception $ex ) {
-            echo "Failed to set DNS TXT record for {$i_target->acmeName()} on {$i_target->domain()}: {$ex}\n";
-            return false;
+            return Result::err(
+                "Failed to set DNS TXT record for {$i_target->acmeName()} on {$i_target->domain()}: {$ex}"
+            );
         }
     }
 
 
-    public function setup() : bool {
-        return true;
+    /** @return Result<null> */
+    public function setup() : Result {
+        return Result::ok();
     }
 
 
@@ -79,12 +107,14 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
 
 
     /**
+     * @return Result<null>
+     *
      * Atomically replace any existing TXT records with the new one.
      * This is safer than it looks because it operates on the
      * _acme-challenge subdomain which should not have any other
      * records.
      */
-    private function recordReplace( DNS $i_dns, string $i_stName, string $i_stAuthKey ) : bool {
+    private function recordReplace( DNS $i_dns, string $i_stName, string $i_stAuthKey ) : Result {
         $x = $i_dns->replaceRR(
             $i_stName,
             'TXT',
@@ -95,15 +125,15 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
             $x = 'Unknown error';
         }
         if ( is_string( $x ) ) {
-            echo "Failed to replace record: {$x}\n";
-            return false;
+            return Result::err( "Failed to replace record: {$x}" );
         }
-        return true;
+        return Result::ok();
     }
 
 
-    private function recordVerify( string $i_stFQDN, string $i_stExpectedValue ) : bool {
-        echo 'Waiting for DNS to propagate...';
+    /** @return Result<null> */
+    private function recordVerify( string $i_stFQDN, string $i_stExpectedValue ) : Result {
+        $this->verbose( 'Waiting for DNS to propagate...' );
         foreach ( $this->rNameServers as $stNS ) {
             $ip = gethostbyname( $stNS );
             $res = new Resolver( [ $ip ] );
@@ -116,18 +146,21 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
                 }
                 $rr = $v->answer[ 0 ] ?? null;
                 if ( $rr instanceof TXT && ( $rr->text[ 0 ] ?? 'Nope' ) === $i_stExpectedValue ) {
-                    echo '👍';
+                    $this->verbose( '👍' );
                     continue 2;
                 }
-                echo '.';
+                $this->verbose( '.' );
                 sleep( 1 );
             }
-            echo "\n";
-            echo "Timed out waiting for DNS to propagate.\n";
-            return false;
+            $this->verbose( "\n" );
+            return Result::err( 'Timed out waiting for DNS to propagate.' );
         }
-        echo "OK!\n";
-        return true;
+        if ( $this->bVerbose ) {
+            $this->verbose( "OK!\n" );
+        }
+        $this->verbose( "Waiting an extra 10 seconds just to be sure...\n" );
+        sleep( 10 );
+        return Result::ok();
     }
 
 

@@ -1,6 +1,6 @@
 {
   "name": "nfsn/easy-le-dns-01",
-  "description": "Let's Encrypt + NearlyFreeSpeech.NET API = easy TLS for intranet devices.",
+  "description": "Let's Encrypt + NearlyFreeSpeech.NET API + DNS-01 = easy TLS for intranet devices.",
   "license": "MIT",
   "autoload": {
     "psr-4": {
@@ -12,9 +12,9 @@
     "jdwx/app": "^1.1",
     "jdwx/strict": "^1.0.22",
     "ext-openssl": "*",
-    "jdwx/acme": "dev-main",
+    "jdwx/acme": "^1.0.2",
     "jdwx/dns-query": "^v2.0.4",
-    "nfsn/apiclient": "dev-main",
+    "nfsn/apiclient": "^v1.0.1",
     "jeremykendall/php-domain-parser": "^6.0"
   },
   "require-dev": {

@@ -7,9 +7,11 @@ declare( strict_types = 1 );
 require_once __DIR__ . '/../vendor/autoload.php';
 
 
-use JDWX\Strict\TypeIs;
+use JDWX\Args\Option;
+use JDWX\Result\Result;
 use NFSN\DNS01\Application;
 use NFSN\DNS01\DNSProviderInterface;
+use NFSN\DNS01\ManualDNSProvider;
 use NFSN\DNS01\NFSNAPIDNSProvider;
 use NFSN\DNS01\Target;
 
@@ -17,7 +19,12 @@ use NFSN\DNS01\Target;
 ( new class( $argv ) extends Application {
 
 
-    private const string CONFIG_FILE_PATH = __DIR__ . '/../data/lets-encrypt.json';
+    private const string CONFIG_FILE_PATH     = __DIR__ . '/../data/lets-encrypt.json';
+
+    private const string DEFAULT_DNS_PROVIDER = 'nfsn';
+
+
+    private string $stProvider;
 
 
     protected function getTarget() : Target {
@@ -28,103 +35,78 @@ use NFSN\DNS01\Target;
     }
 
 
+    public function setup() : void {
+        parent::setup();
+        $this->stProvider = Option::simpleString( 'provider', $this->args() ) ?? self::DEFAULT_DNS_PROVIDER;
+    }
+
+
     protected function getConfigFilePath() : string {
         return self::CONFIG_FILE_PATH;
     }
 
 
-    protected function getDNSProvider() : ?DNSProviderInterface {
+    /** @return Result<DNSProviderInterface> */
+    protected function getDNSProvider() : Result {
 
-        if ( empty( $stMemberLogin = $this->getMemberLogin() ) ) {
-            return null;
-        }
-        if ( empty( $stAPIKey = $this->getAPIKey() ) ) {
-            return null;
-        }
-        return new NFSNAPIDNSProvider( TypeIs::string( $stMemberLogin ), TypeIs::string( $stAPIKey ) );
+        return match ( $this->stProvider ) {
+            'nfsn' => $this->getNFSNDNSProvider(),
+            'manual' => $this->getManualDNSProvider(),
+            default => Result::err( "Unknown DNS provider: {$this->stProvider}" ),
+        };
     }
 
 
-    private function getMemberLogin() : ?string {
+    /** @return Result<DNSProviderInterface> */
+    private function getNFSNDNSProvider() : Result {
+
+        $resLogin = $this->getMemberLogin();
+        if ( $resLogin->isError() ) {
+            return $resLogin->withValue( null );
+        }
+        $resAPIKey = $this->getAPIKey();
+        if ( $resAPIKey->isError() ) {
+            return $resAPIKey->withValue( null );
+        }
+        return Result::ok(
+            i_xValue: new NFSNAPIDNSProvider( $resLogin->unwrapEx(), $resAPIKey->unwrapEx(), $this->bVerbose )
+        );
+    }
+
+
+    /** @return Result<DNSProviderInterface> */
+    private function getManualDNSProvider() : Result {
+        return Result::ok( i_xValue: new ManualDNSProvider( $this->bVerbose ) );
+    }
+
+
+    /** @return Result<string> */
+    private function getMemberLogin() : Result {
         if ( is_string( $st = $this->cfg->getApiValue( 'nfsn_member_login' ) ) ) {
-            return $st;
+            return Result::ok( i_xValue: $st );
         }
 
         $st = $this->readLine( 'Enter your NFSN Member Login: ' );
         if ( empty( $st ) ) {
-            return null;
+            return Result::err( 'NFSN Member Login is required.' );
         }
         $this->cfg->setApiValue( 'nfsn_member_login', $st );
-        return $st;
+        return Result::ok( i_xValue: $st );
     }
 
 
-    private function getAPIKey() : ?string {
+    /** @return Result<string> */
+    private function getAPIKey() : Result {
         if ( is_string( $st = $this->cfg->getApiValue( 'nfsn_api_key' ) ) ) {
-            return $st;
+            return Result::ok( i_xValue: $st );
         }
         $st = $this->readLine( 'Enter your NFSN API Key: ' );
         if ( empty( $st ) ) {
-            return null;
+            return Result::err( 'NFSN API Key is required.' );
         }
         $this->cfg->setApiValue( 'nfsn_api_key', $st );
-        return $st;
+        return Result::ok( i_xValue: $st );
     }
-
-
-    /*
-    protected function oldMain() : int {
-
-        $stCertificate = $this->client->certificate( $order );
-
-        $this->savePEM( $stFQDN, Certificate::keyToString( $this->getPrivateKey( $stFQDN ) ), $stCertificate );
-
-
-        return 0;
-    }
-
-
-    private function waitOutPending( Order $order ) : ?Order {
-        echo 'Waiting for order to be ready...';
-        for ( $ii = 0 ; $ii < 60 ; $ii++ ) {
-            $stStatus = $order->getStatus();
-            if ( $stStatus !== 'pending' ) {
-                echo "OK! ({$stStatus})\n";
-                return $order;
-            }
-            echo '.';
-            sleep( 1 );
-            $order = $this->client->order( $order );
-        }
-        echo "\n";
-        echo "Timed out waiting for order to be ready.\n";
-        return null;
-    }
-
-
-
-
-
-
-
-
-    private function waitForChallenge( Order $order, string $i_stName, int $i_nTimeoutSeconds ) : ?array {
-        echo 'Waiting for challenge to finish...';
-        for ( $ii = 0 ; $ii < $i_nTimeoutSeconds ; $ii++ ) {
-            $r = $this->client->checkChallenge( $order, $i_stName, 'dns-01' );
-            if ( ! empty( $r[ 'status' ] && $r[ 'status' ] !== 'pending' ) ) {
-                echo "done!\n";
-                return $r;
-            }
-            echo '.';
-            sleep( 1 );
-        }
-        echo "\n";
-        echo "Timed out waiting for challenge to be marked valid.\n";
-        return null;
-    }
-
-    */
 
 
 } )();

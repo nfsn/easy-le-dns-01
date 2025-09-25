@@ -13,12 +13,16 @@ use JDWX\ACME\Client;
 use JDWX\ACME\JWT;
 use JDWX\ACME\Order;
 use JDWX\App\InteractiveApplication;
+use JDWX\Args\Option;
 use JDWX\Param\Validate;
 use JDWX\Result\Result;
 use OpenSSLAsymmetricKey;
 
 
 abstract class Application extends InteractiveApplication {
+
+
+    use OutputTrait;
 
 
     protected Config $cfg;
@@ -30,10 +34,17 @@ abstract class Application extends InteractiveApplication {
     private Target $target;
 
 
+    public function setup() : void {
+        parent::setup();
+        $this->bVerbose = Option::simpleBool( 'verbose', $this->args() );
+    }
+
+
     abstract protected function getConfigFilePath() : string;
 
 
-    abstract protected function getDNSProvider() : ?DNSProviderInterface;
+    /** @return Result<DNSProviderInterface> */
+    abstract protected function getDNSProvider() : Result;
 
 
     abstract protected function getTarget() : Target;
@@ -41,43 +52,41 @@ abstract class Application extends InteractiveApplication {
 
     protected function main() : int {
 
-        if ( ! $this->initialize() ) {
-            echo "(Exiting.)\n";
-            return 1;
+        $res = $this->initialize();
+        if ( $res->isError() ) {
+            $this->failure( 'Initialization failed', $res );
         }
 
         $order = new Order( $this->client->newOrder( $this->target->fqdn() ), $this->target->fqdn() );
         $stOrderUrl = $order->locationEx();
         $res = $this->client->waitOnOrder( $order );
         if ( $res->isError() ) {
-            echo 'Failed to create order: ', $res->message(), "\n";
+            $this->failure( 'Order creation failed', $res );
             return 1;
         }
         $order = $res->unwrapEx();
         if ( $order->hasCertificate() ) {
-            echo "Order already has a certificate.\n";
+            $this->verbose( "Order already has a certificate.\n" );
         } else {
 
-            $order = $this->doChallenge( $order );
-            if ( ! $order instanceof Order ) {
-                echo "Failed to complete challenge. (Exiting.)\n";
+            $res = $this->doChallenge( $order );
+            if ( $res->isError() ) {
+                $this->failure( 'Challenge failed', $res );
                 return 1;
             }
+            $order = $res->unwrapEx();
 
             $res = $this->waitForValidation( $order );
             if ( $res->isError() ) {
-                echo 'Order did not become ready: ', $res->message(), "\n";
-                /** @noinspection ForgottenDebugOutputInspection */
-                var_dump( $res->xValue );
+                $this->failure( 'Validation failed', $res );
                 return 1;
             }
 
+            # Have to reload the order to get the updated status.
             $order = $this->client->order( $stOrderUrl );
             $res = $this->doFinalize( $order );
             if ( $res->isError() ) {
-                echo 'Failed to finalize order: ', $res->message(), "\n";
-                /** @noinspection ForgottenDebugOutputInspection */
-                var_dump( $res->xValue );
+                $this->failure( 'Finalize failed', $res );
                 return 1;
             }
             $order = $res->unwrapEx();
@@ -85,13 +94,13 @@ abstract class Application extends InteractiveApplication {
 
         $res = $this->saveCertificate( $order );
         if ( $res->isError() ) {
-            echo 'Failed to save certificate: ', $res->message(), "\n";
-            /** @noinspection ForgottenDebugOutputInspection */
-            var_dump( $res->xValue );
+            $this->failure( 'Save certificate failed', $res );
             return 1;
         }
 
-        echo "All set!\n";
+        $this->dns->removeAuthKey( $this->target );
+
+        $this->output( "All set!\n" );
         return 0;
     }
 
@@ -101,8 +110,10 @@ abstract class Application extends InteractiveApplication {
             return true;
         }
         $stURL = $this->client->directory()[ 'meta' ][ 'termsOfService' ];
-        echo "The Let's Encrypt Terms of Service can be found at:\n";
-        echo "  {$stURL}\n";
+        $this->output(
+            "The Let's Encrypt Terms of Service can be found at:\n",
+            "  {$stURL}\n"
+        );
         $stPrompt = "Do you agree to the Let's Encrypt Terms of Service [y/n]? ";
         if ( ! $this->askYN( $stPrompt ) ) {
             return false;
@@ -112,33 +123,27 @@ abstract class Application extends InteractiveApplication {
     }
 
 
-    private function doChallenge( Order $order ) : ?Order {
-        echo "Starting challenge...\n";
+    /** @return Result<Order> */
+    private function doChallenge( Order $order ) : Result {
+        $this->verbose( "Starting challenge...\n" );
         $rChallenge = $this->client->getChallenge( $order, $this->target->fqdn(), 'dns-01' );
         $stAuthKey = $this->client->keyAuthorizationHashed( $rChallenge[ 'token' ] );
 
-        if ( ! $this->dns->setAuthKey( $this->target, $stAuthKey ) ) {
-            return null;
+        $res = $this->dns->setAuthKey( $this->target, $stAuthKey );
+        if ( $res->isError() ) {
+            return $res;
         }
 
-        echo "Validating challenge...\n";
+        $this->verbose( "Validating challenge...\n" );
         $this->client->validate( $order, $this->target->fqdn(), 'dns-01' );
 
-        $res = $this->client->waitOnOrder( $order );
-        if ( $res->isError() ) {
-            echo 'Validate failed: ', $res->message(), "\n";
-            echo "This information may help for debugging:\n";
-            /** @noinspection ForgottenDebugOutputInspection */
-            var_dump( $order );
-            return null;
-        }
-        return $res->unwrapEx();
+        return $this->client->waitOnOrder( $order );
     }
 
 
     /** @return Result<Order> */
     private function doFinalize( Order $order ) : Result {
-        echo "Finalizing order...\n";
+        $this->verbose( "Finalizing order...\n" );
         $privateKey = $this->getOrCreateTLSPrivateKey( $this->target->fqdn() );
         $stCSR = Certificate::makeCSR( $privateKey, [ $this->target->fqdn() ] );
         if ( ! $order->hasFinalize() ) {
@@ -155,12 +160,12 @@ abstract class Application extends InteractiveApplication {
     private function getOrCreateAcmeAccount() : string {
         $stAccount = $this->cfg->getAcmeAccountUrl();
         if ( is_string( $stAccount ) ) {
-            echo "Using existing account: {$stAccount}\n";
+            $this->verbose( "Using existing account: {$stAccount}\n" );
             return $stAccount;
         }
         $stAccount = $this->client->newAccount( $this->cfg->getAcmeContactEx() );
         $this->cfg->setAcmeAccountUrl( $stAccount );
-        echo "New account created: {$stAccount}\n";
+        $this->verbose( "New account created: {$stAccount}\n" );
         return $stAccount;
     }
 
@@ -170,14 +175,15 @@ abstract class Application extends InteractiveApplication {
         if ( file_exists( $stKeyPath ) ) {
             return Certificate::readKeyPrivate( $stKeyPath );
         }
-        echo "Generating new private key in {$stKeyPath}\n";
+        $this->verbose( "Generating new private key in {$stKeyPath}\n" );
         $key = Certificate::makeKey();
         Certificate::writeKeyPrivate( $stKeyPath, $key );
         return $key;
     }
 
 
-    private function initialize() : bool {
+    /** @return Result<null> */
+    private function initialize() : Result {
         $this->cfg = new Config( $this->getConfigFilePath() );
 
         $jwk = JWT::getOrCreateKey( __DIR__ . '/../data/le-account.key' );
@@ -185,31 +191,30 @@ abstract class Application extends InteractiveApplication {
         $this->client = new Client( $jwk, $acme );
 
         if ( ! $this->agreeToLetsEncryptTerms() ) {
-            echo "No worries.\n";
-            return false;
+            return Result::err( "Let's Encrypt requires agreement to their terms of use." );
         }
 
         if ( ! $this->setContactEmailAddress() ) {
-            echo "No worries.\n";
-            return false;
+            return Result::err( 'A contact email address is required.' );
         }
 
         $this->loadAcmeAccount();
 
         $this->target = $this->getTarget();
-        echo $this->target, "\n";
+        $this->verbose( $this->target, "\n" );
 
-        if ( ( $dns = $this->getDNSProvider() ) === null ) {
-            echo "No DNS provider configured.\n";
-            return false;
+        $res = $this->getDNSProvider();
+        if ( $res->isError() ) {
+            return $res->withValue( null );
         }
-        $this->dns = $dns;
-        if ( ! $this->dns->setup() ) {
-            echo "Failed to set up DNS provider. (Exiting.)\n";
-            return false;
+        $this->dns = $res->unwrapEx();
+
+        $res = $this->dns->setup();
+        if ( $res->isError() ) {
+            return $res->withValue( null );
         }
 
-        return true;
+        return Result::ok();
     }
 
 
@@ -234,7 +239,7 @@ abstract class Application extends InteractiveApplication {
             rename( $stPEMPath, "{$stPEMPath}.old" );
         }
         file_put_contents( $stPEMPath, $stKey . "\n" . $stCertificate );
-        echo "Wrote PEM file {$stPEMPath}\n";
+        $this->verbose( "Wrote PEM file {$stPEMPath}\n" );
         return Result::ok( i_xValue: $i_order );
     }
 
@@ -243,8 +248,10 @@ abstract class Application extends InteractiveApplication {
         if ( $this->cfg->hasAcmeContact() ) {
             return true;
         }
-        echo "Let's Encrypt requires a contact email address to send updates about\n",
-        "expiration and suchlike.\n";
+        $this->output(
+            "Let's Encrypt requires a contact email address to send updates about\n",
+            "expiration and suchlike.\n"
+        );
         while ( true ) {
             $bst = $this->readLine( 'What email address should they use? ' );
             if ( empty( $bst ) ) {
@@ -253,7 +260,7 @@ abstract class Application extends InteractiveApplication {
             if ( Validate::emailAddress( $bst ) ) {
                 break;
             }
-            echo "That doesn't look like a valid email address.\n";
+            $this->output( "That doesn't look like a valid email address.\n" );
         }
 
         $this->cfg->setAcmeContact( $bst );
@@ -266,22 +273,22 @@ abstract class Application extends InteractiveApplication {
      * @suppress PhanPossiblyUndeclaredVariable
      */
     private function waitForValidation( Order $i_order ) : Result {
-        echo 'Waiting for validation...';
+        $this->verbose( 'Waiting for validation...' );
         for ( $ii = 0 ; $ii < 60 ; $ii++ ) {
             $rCheck = $this->client->checkChallenge( $i_order, $this->target->fqdn(), 'dns-01' );
             $stStatus = $rCheck[ 'status' ] ?? 'unknown';
             if ( $stStatus === 'valid' ) {
-                echo "done!\n";
+                $this->verbose( "done!\n" );
                 return Result::ok( i_xValue: $rCheck );
             }
             if ( $stStatus !== 'pending' ) {
-                echo "failed!\n";
+                $this->verbose( "failed! ({$stStatus})\n" );
                 return Result::err( "Challenge status is {$stStatus} not valid.", $rCheck );
             }
-            echo '.';
+            $this->verbose( '.' );
             sleep( 1 );
         }
-        echo "giving up!\n";
+        $this->verbose( "giving up!\n" );
         return Result::err( 'Timed out waiting for validation.', $rCheck );
     }
 
