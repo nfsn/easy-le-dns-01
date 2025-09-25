@@ -26,7 +26,7 @@ readonly class Target implements \Stringable {
             $stFQDN = substr( $stFQDN, 2 );
         }
         if ( ! Validate::hostname( $stFQDN ) ) {
-            throw new \RuntimeException( "FQDN \"{$stFQDN}\" is not a valid hostname." );
+            throw new \InvalidArgumentException( "FQDN \"{$stFQDN}\" is not a valid hostname." );
         }
         if ( $bWild ) {
             $stFQDN = '*.' . $stFQDN;
@@ -37,17 +37,17 @@ readonly class Target implements \Stringable {
                 $i_nstDomain = substr( $i_nstDomain, 1 );
             }
             if ( ! Validate::hostname( $i_nstDomain ) ) {
-                throw new \RuntimeException( "Domain \"{$i_nstDomain}\" is not a valid hostname." );
+                throw new \InvalidArgumentException( "Domain \"{$i_nstDomain}\" is not a valid domain." );
             }
         }
 
         if ( empty( $i_nstDomain ) ) {
-            $i_nstDomain = PslTools::inferDomainFromFQDN( $stFQDN );
+            $i_nstDomain = PslHelper::inferDomainFromFQDN( $stFQDN );
         }
         $this->stDomain = $i_nstDomain;
 
         if ( $stFQDN !== $i_nstDomain && ! str_ends_with( $stFQDN, '.' . $i_nstDomain ) ) {
-            throw new \RuntimeException( "FQDN \"{$stFQDN}\" is not within the domain \"{$i_nstDomain}\"." );
+            throw new \InvalidArgumentException( "FQDN \"{$stFQDN}\" is not within the domain \"{$i_nstDomain}\"." );
         }
 
         if ( $this->stFQDN === $this->stDomain ) {
@@ -65,8 +65,7 @@ readonly class Target implements \Stringable {
             "Domain: {$this->domain()}\n" .
             "Name: {$this->name()}\n" .
             "ACME Name: {$this->acmeName()}\n" .
-            "ACME FQDN: {$this->acmeFQDN()}\n" .
-            "Auth FQDN: {$this->authFQDN()}\n";
+            "ACME FQDN: {$this->acmeFQDN()}\n";
     }
 
 
@@ -83,17 +82,6 @@ readonly class Target implements \Stringable {
             return '_acme-challenge.' . substr( $this->stName, 2 );
         }
         return '_acme-challenge' . ( empty( $this->stName ) ? '' : '.' . $this->stName );
-    }
-
-
-    public function authFQDN() : string {
-        if ( $this->stName === '' || $this->stName === '*' ) {
-            return $this->stDomain;
-        }
-        if ( str_starts_with( $this->stName, '*.' ) ) {
-            return substr( $this->stName, 2 ) . '.' . $this->stDomain;
-        }
-        return $this->stName . '.' . $this->stDomain;
     }
 
 
