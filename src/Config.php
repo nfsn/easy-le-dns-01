@@ -8,7 +8,6 @@ namespace NFSN\DNS01;
 
 
 use JDWX\Config\ConfigDB;
-use JDWX\Strict\TypeIs;
 
 
 class Config {
@@ -27,7 +26,7 @@ class Config {
 
 
     public function getAcmeAccountUrl() : ?string {
-        return TypeIs::stringOrNull( $this->cfg->testGet( 'acme', 'account_url' )?->asString() );
+        return $this->cfg->testGet( 'acme', 'account_url' )?->asString();
     }
 
 
@@ -37,7 +36,7 @@ class Config {
 
 
     public function getAcmeContact() : ?string {
-        return TypeIs::stringOrNull( $this->cfg->testGet( 'contact' )?->asEmailAddress() );
+        return $this->cfg->testGet( 'acme', 'contact' )?->asEmailAddress();
     }
 
 
@@ -51,7 +50,7 @@ class Config {
 
 
     public function getApiValue( string $i_stKey ) : ?string {
-        return TypeIs::stringOrNull( $this->cfg->testGet( 'api', $i_stKey )?->asString() );
+        return $this->cfg->testGet( 'api', $i_stKey )?->asString();
     }
 
 
