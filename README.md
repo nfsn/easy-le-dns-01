@@ -49,6 +49,9 @@ YourPrompt$ php bin/lets-encrypt-dns-01.php another.example.org
 All set!
 ```
 
+This module supports the issuance of wildcard certificates. In that case, the filename will have the asterisk replaced with an underscore, e.g.
+`data/_.example.org.pem`.
+
 ## Stability
 
 Although it is built on strong fundamentals, this module is brand new. There may be some rough edges, bugs, and missing features. Please report any issues you find.
