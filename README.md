@@ -27,7 +27,7 @@ This module provides an ACME client that uses the dns-01 challenge type to obtai
 On the first run, you will be prompted for some setup information:
 
 ```
-YourPrompt$ php bin/lets-encrypt-dns-01.php an.example.org
+YourPrompt$ php bin/easy-le-dns-01.php an.example.org
 The Let's Encrypt Terms of Service can be found at:
   https://letsencrypt.org/documents/LE-SA-v1.5-February-24-2025.pdf
 Do you agree to the Let's Encrypt Terms of Service [y/n]? y
@@ -46,7 +46,7 @@ The key and certificate will be saved in the data/ directory as
 From there, you can run the command again to renew the certificate or create a new one without re-entering the setup information:
 
 ```
-YourPrompt$ php bin/lets-encrypt-dns-01.php another.example.org
+YourPrompt$ php bin/easy-le-dns-01.php another.example.org
 All set!
 ```
 
