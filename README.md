@@ -53,6 +53,13 @@ All set!
 This module supports the issuance of wildcard certificates. In that case, the filename will have the asterisk replaced with an underscore, e.g.
 `data/_.example.org.pem`.
 
+If you don't want to save your credentials in the configuration file, you can set the following environment variables instead:
+
+- `NFSN_API_LOGIN`: Your NearlyFreeSpeech.NET member login
+- `NFSN_API_KEY`: Your NearlyFreeSpeech.NET API key
+
+You can also choose not to save your API key when prompted, and enter it manually each time.
+
 ## Stability
 
 Although it is built on strong fundamentals, this module is brand new. There may be some rough edges, bugs, and missing features. Please report any issues you find.
