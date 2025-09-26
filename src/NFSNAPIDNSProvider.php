@@ -54,7 +54,7 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
     /** @return Result<null> */
     public function removeAuthKey( Target $i_target ) : Result {
         try {
-            $dns = $this->api->newDNS( $i_target->domain() );
+            $dns = $this->dns( $i_target );
             $rRecords = $dns->listRRs( $i_target->acmeName(), 'TXT' );
             if ( ! is_array( $rRecords ) ) {
                 return Result::err( 'Could not find TXT record to remove.' );
@@ -64,14 +64,16 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
             }
             return Result::ok();
         } catch ( \Exception $ex ) {
-            return Result::err( "Failed to remove DNS TXT record for {$i_target->acmeName()} on {$i_target->domain()}: {$ex}" );
+            return Result::err(
+                "Failed to remove DNS TXT record for {$i_target->acmeName()} on {$i_target->domain()}: {$ex}"
+            );
         }
     }
 
 
     /** @return Result<null> */
     public function setAuthKey( Target $i_target, string $i_stAuthKey ) : Result {
-        $dns = $this->api->newDNS( $i_target->domain() );
+        $dns = $this->dns( $i_target );
         try {
             if ( ! $this->recordExists( $dns, $i_target->acmeName(), $i_stAuthKey ) ) {
                 $res = $this->recordReplace( $dns, $i_target->acmeName(), $i_stAuthKey );
@@ -94,6 +96,11 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
     /** @return Result<null> */
     public function setup() : Result {
         return Result::ok();
+    }
+
+
+    private function dns( Target $i_target ) : DNSInterface {
+        return $this->api->newDNS( $i_target->domain() );
     }
 
 
