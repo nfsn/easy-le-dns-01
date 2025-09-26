@@ -99,6 +99,46 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
     }
 
 
+    protected function getResolver( string $i_stNameServer ) : Resolver {
+        $ip = gethostbyname( $i_stNameServer );
+        $res = new Resolver( [ $ip ] );
+        $res->recurse = false;
+        return $res;
+    }
+
+
+    /** @return Result<null> */
+    protected function recordVerify( string $i_stFQDN, string $i_stExpectedValue ) : Result {
+        $this->verbose( 'Waiting for DNS to propagate...' );
+        foreach ( $this->rNameServers as $stNS ) {
+            $res = $this->getResolver( $stNS );
+            $res->recurse = false;
+            for ( $ii = 0 ; $ii < 60 ; $ii++ ) {
+                try {
+                    $v = $res->query( $i_stFQDN, 'TXT' );
+                } catch ( \Exception ) {
+                    $v = null;
+                }
+                $rr = $v->answer[ 0 ] ?? null;
+                if ( $rr instanceof TXT && ( $rr->text[ 0 ] ?? 'Nope' ) === $i_stExpectedValue ) {
+                    $this->verbose( '👍' );
+                    continue 2;
+                }
+                $this->verbose( '.' );
+                sleep( 1 );
+            }
+            $this->verbose( "\n" );
+            return Result::err( 'Timed out waiting for DNS to propagate.' );
+        }
+        if ( $this->bVerbose ) {
+            $this->verbose( "OK!\n" );
+        }
+        $this->verbose( "Waiting an extra 10 seconds just to be sure...\n" );
+        sleep( 10 );
+        return Result::ok();
+    }
+
+
     private function dns( Target $i_target ) : DNSInterface {
         return $this->api->newDNS( $i_target->domain() );
     }
@@ -139,39 +179,6 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
         if ( is_string( $x ) ) {
             return Result::err( "Failed to replace record: {$x}" );
         }
-        return Result::ok();
-    }
-
-
-    /** @return Result<null> */
-    private function recordVerify( string $i_stFQDN, string $i_stExpectedValue ) : Result {
-        $this->verbose( 'Waiting for DNS to propagate...' );
-        foreach ( $this->rNameServers as $stNS ) {
-            $ip = gethostbyname( $stNS );
-            $res = new Resolver( [ $ip ] );
-            $res->recurse = false;
-            for ( $ii = 0 ; $ii < 60 ; $ii++ ) {
-                try {
-                    $v = $res->query( $i_stFQDN, 'TXT' );
-                } catch ( \Exception ) {
-                    $v = null;
-                }
-                $rr = $v->answer[ 0 ] ?? null;
-                if ( $rr instanceof TXT && ( $rr->text[ 0 ] ?? 'Nope' ) === $i_stExpectedValue ) {
-                    $this->verbose( '👍' );
-                    continue 2;
-                }
-                $this->verbose( '.' );
-                sleep( 1 );
-            }
-            $this->verbose( "\n" );
-            return Result::err( 'Timed out waiting for DNS to propagate.' );
-        }
-        if ( $this->bVerbose ) {
-            $this->verbose( "OK!\n" );
-        }
-        $this->verbose( "Waiting an extra 10 seconds just to be sure...\n" );
-        sleep( 10 );
         return Result::ok();
     }
 
