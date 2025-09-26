@@ -48,12 +48,18 @@ use NFSN\DNS01\Target;
 
     /** @return Result<DNSProviderInterface> */
     protected function getDNSProvider() : Result {
-
         return match ( $this->stProvider ) {
             'nfsn' => $this->getNFSNDNSProvider(),
             'manual' => $this->getManualDNSProvider(),
             default => Result::err( "Unknown DNS provider: {$this->stProvider}" ),
         };
+    }
+
+
+    protected function listFlags() : array {
+        return array_merge( parent::listFlags(), [
+            'provider=xxxx' => 'DNS provider to use ("nfsn", "manual"). Default: ' . self::DEFAULT_DNS_PROVIDER,
+        ] );
     }
 
 

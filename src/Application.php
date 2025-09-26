@@ -33,10 +33,13 @@ abstract class Application extends InteractiveApplication {
 
     private Target $target;
 
+    private bool $bHelp;
+
 
     public function setup() : void {
         parent::setup();
         $this->bVerbose = Option::simpleBool( 'verbose', $this->args() );
+        $this->bHelp = Option::simpleBool( 'help', $this->args() );
     }
 
 
@@ -50,7 +53,20 @@ abstract class Application extends InteractiveApplication {
     abstract protected function getTarget() : Target;
 
 
+    /** @return array<string, string> */
+    protected function listFlags() : array {
+        return [
+            'help' => 'Show this information',
+            'verbose' => 'Enable verbose output',
+        ];
+    }
+
+
     protected function main() : int {
+
+        if ( $this->bHelp ) {
+            return $this->usage();
+        }
 
         $res = $this->initialize();
         if ( $res->isError() ) {
@@ -288,6 +304,20 @@ abstract class Application extends InteractiveApplication {
 
         $this->cfg->setAcmeContact( $bst );
         return true;
+    }
+
+
+    private function usage() : int {
+        echo "\nYourPrompt\$ {$this->stCommand} [options] <fqdn> [domain-name]\n\n";
+        echo "Arguments:\n\n";
+        echo "  <fqdn>         Fully qualified domain name to get a certificate for.\n\n";
+        echo "  [domain-name]  Domain name to use with the DNS provider. Will be\n";
+        echo "                 derived from the FQDN if not provided.\n\n";
+        echo "Options:\n\n";
+        foreach ( $this->listFlags() as $stFlag => $stDesc ) {
+            echo "  --{$stFlag}\n      {$stDesc}\n\n";
+        }
+        return 0;
     }
 
 
