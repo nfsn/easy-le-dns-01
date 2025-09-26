@@ -82,6 +82,9 @@ use NFSN\DNS01\Target;
 
     /** @return Result<string> */
     private function getMemberLogin() : Result {
+        if ( ! empty( $_ENV[ 'NFSN_API_USERNAME' ] ) ) {
+            return Result::ok( i_xValue: $_ENV[ 'NFSN_API_USERNAME' ] );
+        }
         if ( is_string( $st = $this->cfg->getApiValue( 'nfsn_member_login' ) ) ) {
             return Result::ok( i_xValue: $st );
         }
@@ -97,6 +100,9 @@ use NFSN\DNS01\Target;
 
     /** @return Result<string> */
     private function getAPIKey() : Result {
+        if ( ! empty( $_ENV[ 'NFSN_API_KEY' ] ) ) {
+            return Result::ok( i_xValue: $_ENV[ 'NFSN_API_KEY' ] );
+        }
         if ( is_string( $st = $this->cfg->getApiValue( 'nfsn_api_key' ) ) ) {
             return Result::ok( i_xValue: $st );
         }
@@ -104,7 +110,9 @@ use NFSN\DNS01\Target;
         if ( empty( $st ) ) {
             return Result::err( 'NFSN API Key is required.' );
         }
-        $this->cfg->setApiValue( 'nfsn_api_key', $st );
+        if ( $this->askYN( 'Save API Key to configuration file? ', false ) ) {
+            $this->cfg->setApiValue( 'nfsn_api_key', $st );
+        }
         return Result::ok( i_xValue: $st );
     }
 
