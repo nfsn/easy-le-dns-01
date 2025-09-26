@@ -8,10 +8,12 @@ namespace NFSN\DNS01\Tests;
 
 
 use NFSN\DNS01\Config;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 
-class ConfigTest extends TestCase {
+#[CoversClass( Config::class )]
+final class ConfigTest extends TestCase {
 
 
     private Config $cfg;

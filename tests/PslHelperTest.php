@@ -8,9 +8,11 @@ namespace NFSN\DNS01\Tests;
 
 
 use NFSN\DNS01\PslHelper;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 
+#[CoversClass( PslHelper::class )]
 final class PslHelperTest extends TestCase {
 
 
