@@ -10,8 +10,9 @@ namespace NFSN\DNS01;
 use JDWX\DNSQuery\Resolver;
 use JDWX\DNSQuery\RR\TXT;
 use JDWX\Result\Result;
-use NFSN\APIClient\DNS;
+use NFSN\APIClient\DNSInterface;
 use NFSN\APIClient\Manager;
+use NFSN\APIClient\ManagerInterface;
 
 
 class NFSNAPIDNSProvider implements DNSProviderInterface {
@@ -21,8 +22,6 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
 
 
     private const int DESIRED_TTL = 180;
-
-    private Manager $api;
 
 
     /** @var list<string> */
@@ -38,11 +37,17 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
     ];
 
 
-    public function __construct( #[\SensitiveParameter] string $i_stMemberLogin,
-                                 #[\SensitiveParameter] string $i_stApiKey,
-                                 bool                          $i_bVerbose ) {
+    public function __construct( private readonly ManagerInterface $api,
+                                 bool                              $i_bVerbose ) {
         $this->bVerbose = $i_bVerbose;
-        $this->api = new Manager( $i_stMemberLogin, $i_stApiKey );
+    }
+
+
+    public static function fromCredentials( #[\SensitiveParameter] string $i_stMemberLogin,
+                                            #[\SensitiveParameter] string $i_stApiKey,
+                                            bool                          $i_bVerbose ) : self {
+        $api = new Manager( $i_stMemberLogin, $i_stApiKey );
+        return new self( $api, $i_bVerbose );
     }
 
 
@@ -92,7 +97,7 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
     }
 
 
-    private function recordExists( DNS $i_dns, string $i_stName, string $i_stAuthKey ) : bool {
+    private function recordExists( DNSInterface $i_dns, string $i_stName, string $i_stAuthKey ) : bool {
         $rRecords = $i_dns->listRRs( $i_stName, 'TXT' );
         if ( ! is_array( $rRecords ) ) {
             return false;
@@ -114,7 +119,7 @@ class NFSNAPIDNSProvider implements DNSProviderInterface {
      * _acme-challenge subdomain which should not have any other
      * records.
      */
-    private function recordReplace( DNS $i_dns, string $i_stName, string $i_stAuthKey ) : Result {
+    private function recordReplace( DNSInterface $i_dns, string $i_stName, string $i_stAuthKey ) : Result {
         $x = $i_dns->replaceRR(
             $i_stName,
             'TXT',

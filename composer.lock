@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "53ec63fc171ed7e5f39309b94283f60b",
+    "content-hash": "0a1f949901b984138e8d15d82fc2d118",
     "packages": [
         {
             "name": "brick/math",
@@ -393,7 +393,7 @@
         },
         {
             "name": "jdwx/acme",
-            "version": "dev-main",
+            "version": "v1.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jdwx/acme-php.git",
@@ -424,7 +424,6 @@
                 "phpunit/phpunit": "^12",
                 "roave/security-advisories": "dev-latest"
             },
-            "default-branch": true,
             "bin": [
                 "bin/acme-cli.php"
             ],
@@ -437,7 +436,7 @@
             "notification-url": "https://packagist.org/downloads/",
             "support": {
                 "issues": "https://github.com/jdwx/acme-php/issues",
-                "source": "https://github.com/jdwx/acme-php/tree/main"
+                "source": "https://github.com/jdwx/acme-php/tree/v1.0.2"
             },
             "time": "2025-09-25T04:12:46+00:00"
         },
@@ -1040,16 +1039,16 @@
         },
         {
             "name": "nfsn/apiclient",
-            "version": "dev-main",
+            "version": "v1.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nfsn/nfsn-apiclient-php.git",
-                "reference": "8672958f78eb271148973089b37f5dab89448dd1"
+                "reference": "981606375380fe497ee88e2ad2f1b8bd39aad3ee"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nfsn/nfsn-apiclient-php/zipball/8672958f78eb271148973089b37f5dab89448dd1",
-                "reference": "8672958f78eb271148973089b37f5dab89448dd1",
+                "url": "https://api.github.com/repos/nfsn/nfsn-apiclient-php/zipball/981606375380fe497ee88e2ad2f1b8bd39aad3ee",
+                "reference": "981606375380fe497ee88e2ad2f1b8bd39aad3ee",
                 "shasum": ""
             },
             "require": {
@@ -1062,7 +1061,6 @@
                 "phpunit/phpunit": "^12.3",
                 "roave/security-advisories": "dev-latest"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -1076,9 +1074,9 @@
             "description": "PHP client bindings for the NearlyFreeSpeech.NET API.",
             "support": {
                 "issues": "https://github.com/nfsn/nfsn-apiclient-php/issues",
-                "source": "https://github.com/nfsn/nfsn-apiclient-php/tree/main"
+                "source": "https://github.com/nfsn/nfsn-apiclient-php/tree/v1.0.2"
             },
-            "time": "2025-09-25T01:03:27+00:00"
+            "time": "2025-09-26T02:25:25+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",
@@ -3848,16 +3846,16 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "2.1.28",
+            "version": "2.1.29",
             "source": {
                 "type": "git",
-                "url": "https://github.com/phpstan/phpstan.git",
-                "reference": "578fa296a166605d97b94091f724f1257185d278"
+                "url": "https://github.com/phpstan/phpstan-phar-composer-source.git",
+                "reference": "git"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/578fa296a166605d97b94091f724f1257185d278",
-                "reference": "578fa296a166605d97b94091f724f1257185d278",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/d618573eed4a1b6b75e37b2e0b65ac65c885d88e",
+                "reference": "d618573eed4a1b6b75e37b2e0b65ac65c885d88e",
                 "shasum": ""
             },
             "require": {
@@ -3902,7 +3900,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-09-19T08:58:49+00:00"
+            "time": "2025-09-25T06:58:18+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -6590,8 +6588,6 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "jdwx/acme": 20,
-        "nfsn/apiclient": 20,
         "roave/security-advisories": 20
     },
     "prefer-stable": false,

@@ -69,7 +69,7 @@ use NFSN\DNS01\Target;
             return $resAPIKey->withValue( null );
         }
         return Result::ok(
-            i_xValue: new NFSNAPIDNSProvider( $resLogin->unwrapEx(), $resAPIKey->unwrapEx(), $this->bVerbose )
+            i_xValue: NFSNAPIDNSProvider::fromCredentials( $resLogin->unwrapEx(), $resAPIKey->unwrapEx(), $this->bVerbose )
         );
     }
 

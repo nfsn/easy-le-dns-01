@@ -14,7 +14,7 @@
     "ext-openssl": "*",
     "jdwx/acme": "^1.0.2",
     "jdwx/dns-query": "^v2.0.4",
-    "nfsn/apiclient": "^v1.0.1",
+    "nfsn/apiclient": "^v1.0.2",
     "jeremykendall/php-domain-parser": "^6.0"
   },
   "require-dev": {
