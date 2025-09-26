@@ -36,6 +36,7 @@ expiration and suchlike.
 What email address should they use? lets-encrypt@example.org
 Enter your NFSN Member Login: username
 Enter your NFSN API Key: api-key-from-profile-panel
+Save API Key to configuration file? y
 All set!
 ```
 
