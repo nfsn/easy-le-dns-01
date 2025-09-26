@@ -144,7 +144,7 @@ abstract class Application extends InteractiveApplication {
     /** @return Result<Order> */
     private function doFinalize( Order $order ) : Result {
         $this->verbose( "Finalizing order...\n" );
-        $privateKey = $this->getOrCreateTLSPrivateKey( $this->target->fqdn() );
+        $privateKey = $this->getOrCreateTLSPrivateKey();
         $stCSR = Certificate::makeCSR( $privateKey, [ $this->target->fqdn() ] );
         if ( ! $order->hasFinalize() ) {
             return Result::err( 'Order does not have a finalize URL.', $order );
@@ -170,8 +170,8 @@ abstract class Application extends InteractiveApplication {
     }
 
 
-    private function getOrCreateTLSPrivateKey( string $i_stName ) : OpenSSLAsymmetricKey {
-        $stKeyPath = __DIR__ . "/../data/{$i_stName}.key";
+    private function getOrCreateTLSPrivateKey() : OpenSSLAsymmetricKey {
+        $stKeyPath = $this->getTLSPrivateKeyPath();
         if ( file_exists( $stKeyPath ) ) {
             return Certificate::readKeyPrivate( $stKeyPath );
         }
@@ -179,6 +179,12 @@ abstract class Application extends InteractiveApplication {
         $key = Certificate::makeKey();
         Certificate::writeKeyPrivate( $stKeyPath, $key );
         return $key;
+    }
+
+
+    private function getTLSPrivateKeyPath() : string {
+        $stKeyPath = __DIR__ . "/../data/{$this->target->fqdn()}.key";
+        return str_replace( '*', '_', $stKeyPath );
     }
 
 
@@ -233,13 +239,20 @@ abstract class Application extends InteractiveApplication {
             return Result::err( 'Order does not have a certificate URL.', $i_order );
         }
         $stCertificate = $this->client->certificate( $i_order );
-        $stKey = Certificate::keyToString( $this->getOrCreateTLSPrivateKey( $this->target->fqdn() ) );
+        $stKey = Certificate::keyToString( $this->getOrCreateTLSPrivateKey() );
         $stPEMPath = __DIR__ . "/../data/{$this->target->fqdn()}.pem";
+        $stPEMPath = str_replace( '*', '_', $stPEMPath );
         if ( file_exists( $stPEMPath ) ) {
             rename( $stPEMPath, "{$stPEMPath}.old" );
         }
         file_put_contents( $stPEMPath, $stKey . "\n" . $stCertificate );
         $this->verbose( "Wrote PEM file {$stPEMPath}\n" );
+
+        # Now that we have written the certificate, get rid of the key file.
+        $stKeyPath = $this->getTLSPrivateKeyPath();
+        if ( file_exists( $stKeyPath ) ) {
+            unlink( $stKeyPath );
+        }
         return Result::ok( i_xValue: $i_order );
     }
 
