@@ -34,7 +34,7 @@ class ManualDNSProvider implements DNSProviderInterface {
 
     /** @return Result<null> */
     public function removeAuthKey( Target $i_target ) : Result {
-        $this->output( 'It is now safe to remove the DNS TXT record.' );
+        $this->output( "It is now safe to remove the DNS TXT record.\n" );
         return Result::ok();
     }
 
