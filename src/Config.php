@@ -94,6 +94,7 @@ class Config {
 
     private function save() : void {
         $this->cfg->serializeToFile( $this->stConfigFile );
+        chmod( $this->stConfigFile, 0600 );
     }
 
 

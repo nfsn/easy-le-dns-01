@@ -157,6 +157,11 @@ abstract class Application extends InteractiveApplication {
     }
 
 
+    private function getAccountKeyPath() : string {
+        return __DIR__ . '/../data/le-account.key';
+    }
+
+
     private function getOrCreateAcmeAccount() : string {
         $stAccount = $this->cfg->getAcmeAccountUrl();
         if ( is_string( $stAccount ) ) {
@@ -178,6 +183,7 @@ abstract class Application extends InteractiveApplication {
         $this->verbose( "Generating new private key in {$stKeyPath}\n" );
         $key = Certificate::makeKey();
         Certificate::writeKeyPrivate( $stKeyPath, $key );
+        chmod( $stKeyPath, 0600 );
         return $key;
     }
 
@@ -192,7 +198,8 @@ abstract class Application extends InteractiveApplication {
     private function initialize() : Result {
         $this->cfg = new Config( $this->getConfigFilePath() );
 
-        $jwk = JWT::getOrCreateKey( __DIR__ . '/../data/le-account.key' );
+        $stKeyPath = $this->getAccountKeyPath();
+        $jwk = JWT::getOrCreateKey( $stKeyPath );
         $acme = new ACMEv2( ACMEv2::LE_PRODUCTION_URL );
         $this->client = new Client( $jwk, $acme );
 
@@ -247,6 +254,9 @@ abstract class Application extends InteractiveApplication {
         }
         file_put_contents( $stPEMPath, $stKey . "\n" . $stCertificate );
         $this->verbose( "Wrote PEM file {$stPEMPath}\n" );
+
+        # Because the PEM contains the private key, we lock down the permissions.
+        chmod( $stPEMPath, 0600 );
 
         # Now that we have written the certificate, get rid of the key file.
         $stKeyPath = $this->getTLSPrivateKeyPath();
