@@ -393,16 +393,16 @@
         },
         {
             "name": "jdwx/acme",
-            "version": "v1.0.2",
+            "version": "v1.0.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jdwx/acme-php.git",
-                "reference": "58779888eacd0547db5c79ed62380519f89984ad"
+                "reference": "9ad461c91fd6a7d6a0e85208b6955708878b251c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/jdwx/acme-php/zipball/58779888eacd0547db5c79ed62380519f89984ad",
-                "reference": "58779888eacd0547db5c79ed62380519f89984ad",
+                "url": "https://api.github.com/repos/jdwx/acme-php/zipball/9ad461c91fd6a7d6a0e85208b6955708878b251c",
+                "reference": "9ad461c91fd6a7d6a0e85208b6955708878b251c",
                 "shasum": ""
             },
             "require": {
@@ -436,9 +436,9 @@
             "notification-url": "https://packagist.org/downloads/",
             "support": {
                 "issues": "https://github.com/jdwx/acme-php/issues",
-                "source": "https://github.com/jdwx/acme-php/tree/v1.0.2"
+                "source": "https://github.com/jdwx/acme-php/tree/v1.0.3"
             },
-            "time": "2025-09-25T04:12:46+00:00"
+            "time": "2025-09-26T18:19:12+00:00"
         },
         {
             "name": "jdwx/app",
