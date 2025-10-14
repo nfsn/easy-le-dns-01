@@ -11,6 +11,7 @@ use JDWX\ACME\ACMEv2;
 use JDWX\ACME\Certificate;
 use JDWX\ACME\Client;
 use JDWX\ACME\JWT;
+use JDWX\ACME\KeyType;
 use JDWX\ACME\Order;
 use JDWX\App\InteractiveApplication;
 use JDWX\Args\Option;
@@ -25,7 +26,13 @@ abstract class Application extends InteractiveApplication {
     use OutputTrait;
 
 
+    /** @var list<string> */
+    private const array ALLOWED_KEY_TYPES = [ 'rsa', 'ec' ];
+
+
     protected Config $cfg;
+
+    protected string $stKeyType;
 
     private Client $client;
 
@@ -35,11 +42,15 @@ abstract class Application extends InteractiveApplication {
 
     private bool $bHelp;
 
+    private bool $bSplit = true;
+
 
     public function setup() : void {
         parent::setup();
         $this->bVerbose = Option::simpleBool( 'verbose', $this->args() );
         $this->bHelp = Option::simpleBool( 'help', $this->args() );
+        $this->bSplit = Option::simpleBool( 'split', $this->args() );
+        $this->stKeyType = strtolower( trim( Option::simpleString( 'type', $this->args() ) ?? 'ec' ) );
     }
 
 
@@ -50,6 +61,12 @@ abstract class Application extends InteractiveApplication {
     abstract protected function getDNSProvider() : Result;
 
 
+    protected function getTLSPrivateKeyPath() : string {
+        $stKeyPath = __DIR__ . "/../data/{$this->target->fqdn()}-{$this->stKeyType}.key";
+        return str_replace( '*', '_', $stKeyPath );
+    }
+
+
     abstract protected function getTarget() : Target;
 
 
@@ -57,6 +74,8 @@ abstract class Application extends InteractiveApplication {
     protected function listFlags() : array {
         return [
             'help' => 'Show this information',
+            'split' => 'Write certificate, chain, and key files instead of a single PEM file',
+            'type' => 'Type of key to create ("rsa" or "ec") [default: ec]',
             'verbose' => 'Enable verbose output',
         ];
     }
@@ -66,6 +85,11 @@ abstract class Application extends InteractiveApplication {
 
         if ( $this->bHelp ) {
             return $this->usage();
+        }
+
+        if ( ! in_array( $this->stKeyType, self::ALLOWED_KEY_TYPES, true ) ) {
+            $this->output( "Invalid key type: {$this->stKeyType}\n" );
+            exit( 1 );
         }
 
         $res = $this->initialize();
@@ -192,21 +216,22 @@ abstract class Application extends InteractiveApplication {
 
 
     private function getOrCreateTLSPrivateKey() : OpenSSLAsymmetricKey {
+        if ( strtolower( $this->stKeyType ) === 'rsa' ) {
+            $key = Certificate::makeKey( KeyType::RSA );
+        } elseif ( strtolower( $this->stKeyType ) === 'ec' ) {
+            $key = Certificate::makeKey();
+        } else {
+            $this->output( "Unknown key type: {$this->stKeyType}" );
+            exit( 1 );
+        }
         $stKeyPath = $this->getTLSPrivateKeyPath();
         if ( file_exists( $stKeyPath ) ) {
             return Certificate::readKeyPrivate( $stKeyPath );
         }
         $this->verbose( "Generating new private key in {$stKeyPath}\n" );
-        $key = Certificate::makeKey();
         Certificate::writeKeyPrivate( $stKeyPath, $key );
         chmod( $stKeyPath, 0600 );
         return $key;
-    }
-
-
-    private function getTLSPrivateKeyPath() : string {
-        $stKeyPath = __DIR__ . "/../data/{$this->target->fqdn()}.key";
-        return str_replace( '*', '_', $stKeyPath );
     }
 
 
@@ -263,22 +288,38 @@ abstract class Application extends InteractiveApplication {
         }
         $stCertificate = $this->client->certificate( $i_order );
         $stKey = Certificate::keyToString( $this->getOrCreateTLSPrivateKey() );
-        $stPEMPath = __DIR__ . "/../data/{$this->target->fqdn()}.pem";
-        $stPEMPath = str_replace( '*', '_', $stPEMPath );
-        if ( file_exists( $stPEMPath ) ) {
-            rename( $stPEMPath, "{$stPEMPath}.old" );
-        }
-        file_put_contents( $stPEMPath, $stKey . "\n" . $stCertificate );
-        $this->verbose( "Wrote PEM file {$stPEMPath}\n" );
+        $stFQDN = $this->target->fqdn();
+        $stFQDN = str_replace( '*', '_', $stFQDN );
 
-        # Because the PEM contains the private key, we lock down the permissions.
-        chmod( $stPEMPath, 0600 );
+        if ( ! $this->bSplit ) {
+            $stPEMPath = __DIR__ . "/../data/{$stFQDN}.pem";
+            $this->writeFileSavingOld( $stPEMPath, $stKey . "\n" . $stCertificate );
+            $this->verbose( "Wrote PEM file {$stPEMPath}\n" );
 
-        # Now that we have written the certificate, get rid of the key file.
-        $stKeyPath = $this->getTLSPrivateKeyPath();
-        if ( file_exists( $stKeyPath ) ) {
-            unlink( $stKeyPath );
+            # Because the PEM contains the private key, we lock down the permissions.
+            chmod( $stPEMPath, 0600 );
+
+            # Now that we have written the certificate, get rid of the key file.
+            $stKeyPath = $this->getTLSPrivateKeyPath();
+            if ( file_exists( $stKeyPath ) ) {
+                unlink( $stKeyPath );
+            }
+
+            return Result::ok( i_xValue: $i_order );
         }
+
+        $stCertOnly = Certificate::parseChain( $stCertificate, $this->target->fqdn() )[ 0 ];
+        $stCertOnly = Certificate::toString( $stCertOnly );
+        $stChainOnly = str_replace( $stCertOnly, '', $stCertificate );
+
+        $stCertPath = __DIR__ . "/../data/{$stFQDN}.crt";
+        $this->writeFileSavingOld( $stCertPath, $stCertOnly );
+        $this->verbose( "Wrote certificate file {$stCertPath}\n" );
+
+        $stChainPath = __DIR__ . "/../data/{$stFQDN}.chn";
+        $this->writeFileSavingOld( $stChainPath, $stChainOnly );
+        $this->verbose( "Wrote chain file {$stChainPath}\n" );
+
         return Result::ok( i_xValue: $i_order );
     }
 
@@ -343,6 +384,14 @@ abstract class Application extends InteractiveApplication {
         }
         $this->verbose( "giving up!\n" );
         return Result::err( 'Timed out waiting for validation.', $rCheck );
+    }
+
+
+    private function writeFileSavingOld( string $i_stPath, string $i_stData ) : void {
+        if ( file_exists( $i_stPath ) ) {
+            rename( $i_stPath, "{$i_stPath}.old" );
+        }
+        file_put_contents( $i_stPath, $i_stData );
     }
 
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 
 
@@ -58,7 +59,7 @@ use NFSN\DNS01\Target;
 
     protected function listFlags() : array {
         return array_merge( parent::listFlags(), [
-            'provider=xxxx' => 'DNS provider to use ("nfsn", "manual"). Default: ' . self::DEFAULT_DNS_PROVIDER,
+            'provider=xxxx' => 'DNS provider to use ("nfsn", "manual"). [default: ' . self::DEFAULT_DNS_PROVIDER . ']',
         ] );
     }
 
