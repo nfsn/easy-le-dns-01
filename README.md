@@ -16,6 +16,13 @@ Or download the source from GitHub:
 git clone https://github.com/nfsn/easy-le-dns-01.git
 ```
 
+Because this module provides standalone functionality, you must run composer in the project directory to install dependencies:
+
+```bash
+cd easy-le-dns-01
+composer install
+```
+
 ## Requirements
 
 This module requires PHP 8.3 or later.
