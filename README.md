@@ -71,6 +71,16 @@ You can also choose not to save your API key when prompted, and enter it manuall
 
 Although it is built on strong fundamentals, this module is brand new. There may be some rough edges, bugs, and missing features. Please report any issues you find.
 
+## Possible Issues
+
+### Local Clock Accuracy
+
+The NFSN API requires a local clock (on your computer) accurate to within 5 seconds to authenticate (refer to wiki page [here](https://members.nearlyfreespeech.net/wiki/API/Introduction)). If your local clock is outside of this tolerance, authentication may fail with the following error:
+```
+APIManager: API debug: The authentication timestamp is out of range
+```
+You can verify how accurate the local system clock is with [time.is](https://time.is/). If your local clock error is significant, then you may need to setup an NTP client with your local device (e.g. Chrony for Linux systems) or check your existing one for issues.
+
 ## History
 
 This module was created in September 2025 as a more general reimplementation of an ad-hoc tool* used internally for a similar purpose.
