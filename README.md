@@ -77,7 +77,7 @@ Although it is built on strong fundamentals, this module is brand new. There may
 
 The NFSN API requires a local clock (on your computer) accurate to within 5 seconds to authenticate (refer to wiki page [here](https://members.nearlyfreespeech.net/wiki/API/Introduction)). If your local clock is outside of this tolerance, authentication may fail with the following error:
 ```
-APIManager: API debug: The authentication timestamp is out of range
+APIManager: API debug: The authentication timestamp is more than five seconds off. Please check your system clock.
 ```
 You can verify how accurate the local system clock is with [time.is](https://time.is/). If your local clock error is significant, then you may need to setup an NTP client with your local device (e.g. Chrony for Linux systems) or check your existing one for issues.
 
